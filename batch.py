@@ -16,19 +16,16 @@ def main():
     # [iCalendar package — icalendar 4.0.5.dev0 documentation](https://icalendar.readthedocs.io/en/latest/usage.html)
     cal = Calendar()
     cal.add('version', '2.0')
-    # cal.add('prodid', '-//test//hoge//EN')
-    cal['X-WR-CALNAME'] = [f'週間天気予報：{place}']
+    cal['X-WR-CALNAME'] = [f'週間天気予報({place})']
     cal['X-WR-CALDESC'] = ['気象庁の週間天気予報']
     cal['X-WR-TIMEZONE'] = ['Asia/Tokyo']
     for day, w in zip(days, wt):
         event = Event()
         event.add('summary', w)
         # event.add('description', u'詳細')
-        event.add('dtstart', day)  # 日付はdatetimeを使える
+        event.add('dtstart', day)
         event.add('dtend', day + timedelta(days=1))
         cal.add_component(event)
-
-    print(display(cal))
 
     with open('weather.ics', mode='w') as f:
         f.write(display(cal) + '\n')
@@ -67,7 +64,7 @@ def weather(pref_id, point):
     while full_date.day != first_day:
         attempt += 1
         if attempt > max_attempt:
-            break
+            raise Exception
         full_date += timedelta(days=1)
 
     days = [full_date + timedelta(days=i) for i in range(7)]
@@ -90,8 +87,3 @@ def weather(pref_id, point):
 
 if __name__ == '__main__':
     main()
-
-    # trは 1 + 5*n個　ある。一つ目がタイトル、残りはそれぞれの5行が一つの地域を表す。
-    # 何県、地点、各列の日付、天気、最高気温、最低気温
-    # getTitle
-    # 現時点から一日づつインクリメントして記載の日になった時がその日の年月日になる
