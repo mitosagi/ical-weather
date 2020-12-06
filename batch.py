@@ -17,7 +17,7 @@ def main():
     cal = Calendar()
     cal.add('version', '2.0')
     # cal.add('prodid', '-//test//hoge//EN')
-    cal['X-WR-CALNAME'] = [f'週間天気予報：{place}']
+    cal['X-WR-CALNAME'] = [f'週間天気予報({place})']
     cal['X-WR-CALDESC'] = ['気象庁の週間天気予報']
     cal['X-WR-TIMEZONE'] = ['Asia/Tokyo']
     for day, w in zip(days, wt):
