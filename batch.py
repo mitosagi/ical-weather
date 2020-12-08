@@ -16,7 +16,7 @@ def main():
     # [iCalendar package — icalendar 4.0.5.dev0 documentation](https://icalendar.readthedocs.io/en/latest/usage.html)
     cal = Calendar()
     cal.add('version', '2.0')
-    cal['X-WR-CALNAME'] = [f'週間天気予報({place})']
+    cal['X-WR-CALNAME'] = [f'週間天気予報：{place}']
     cal['X-WR-CALDESC'] = ['気象庁の週間天気予報']
     cal['X-WR-TIMEZONE'] = ['Asia/Tokyo']
     for day, w in zip(days, wt):
@@ -25,6 +25,8 @@ def main():
         # event.add('description', u'詳細')
         event.add('dtstart', day)
         event.add('dtend', day + timedelta(days=1))
+        event.add('DESCRIPTION', f'詳細：https://www.jma.go.jp/jp/week/{pref_id}.html')
+        event.add('X-ALT-DESC;FMTTYPE=text/html', f'詳細：<a href="https://www.jma.go.jp/jp/week/{pref_id}.html">気象庁｜週間天気予報：{pref}</a>')
         cal.add_component(event)
 
     with open('weather.ics', mode='w') as f:
@@ -74,9 +76,9 @@ def weather(pref_id, point):
     weathers = [td.find("br").previousSibling for td in rows[0].select('td')]
 
     max_temp = [
-        td.find("br").previousSibling for td in rows[3].select('td')[1:]]
+        td.find("br").previousSibling if td.find("br") else '-' for td in rows[3].select('td')[1:]]
     min_temp = [
-        td.find("br").previousSibling for td in rows[4].select('td')[1:]]
+        td.find("br").previousSibling if td.find("br") else '-' for td in rows[4].select('td')[1:]]
 
     weather_temp = [f'{a} {b}℃/{c}℃'for a, b,
                     c in zip(weathers, max_temp, min_temp)]
