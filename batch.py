@@ -16,17 +16,17 @@ def main():
     # [iCalendar package — icalendar 4.0.5.dev0 documentation](https://icalendar.readthedocs.io/en/latest/usage.html)
     cal = Calendar()
     cal.add('version', '2.0')
-    cal['X-WR-CALNAME'] = [f'週間天気予報：{place}']
-    cal['X-WR-CALDESC'] = ['気象庁の週間天気予報']
-    cal['X-WR-TIMEZONE'] = ['Asia/Tokyo']
+    cal.add('prodid', '-//mitosagi//icalweather v1.0//EN')
+    cal.add('X-WR-CALNAME', f'週間天気予報({place})')
+    cal.add('X-WR-CALDESC', '気象庁の週間天気予報')
+    cal.add('X-WR-TIMEZONE', 'Asia/Tokyo')
     for day, w in zip(days, wt):
         event = Event()
         event.add('summary', w)
-        # event.add('description', u'詳細')
         event.add('dtstart', day)
         event.add('dtend', day + timedelta(days=1))
-        event.add('DESCRIPTION', f'詳細：https://www.jma.go.jp/jp/week/{pref_id}.html')
-        event.add('X-ALT-DESC;FMTTYPE=text/html', f'詳細：<a href="https://www.jma.go.jp/jp/week/{pref_id}.html">気象庁｜週間天気予報：{pref}</a>')
+        event.add('DESCRIPTION',
+                  f'詳細：https://www.jma.go.jp/jp/week/{pref_id}.html')
         cal.add_component(event)
 
     with open('weather.ics', mode='w') as f:
