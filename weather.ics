@@ -5,7 +5,7 @@ X-WR-CALDESC:気象庁の週間天気予報
 X-WR-CALNAME:週間天気予報(大津)
 X-WR-TIMEZONE:Asia/Tokyo
 BEGIN:VEVENT
-SUMMARY:曇時々雨か雪 10℃/6℃
+SUMMARY:雨時々止む 10℃/6℃
 DTSTART;VALUE=DATE:20201230
 DTEND;VALUE=DATE:20201231
 DESCRIPTION:詳細：https://www.jma.go.jp/jp/week/334.html
