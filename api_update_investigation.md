@@ -5,7 +5,7 @@ https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=250000
 読み込まれるJSON\
 https://www.jma.go.jp/bosai/forecast/data/forecast/250000.json?__time__=202103021201
 
-URLにアクセス日時`time`がない場合でも取得可能。\
+URLにアクセス日時`time`がない場合でも取得可能。キャッシュなどの問題を考えてtimeは付けた方が良いと思う。\
 https://www.jma.go.jp/bosai/forecast/data/forecast/250000.json
 
 
@@ -36,6 +36,8 @@ weatherCodesと天気の対応関係はjsonではなく、HTML本体に`Const.TE
 4. timeSeriesの要素の中で、areasの要素の中で、2重列挙を行い、area>codeがclass10sに当てはまれば天気、amedasに当てはまれば最高・最低気温を取得
 5. 天気をtelopsを用いて文字列に変換、時刻を日付に変換
 6. 3.4.で取得した日付、天気、最高・最低をzipしてical化
+
+この方法だと明日の気温もわからない問題がある。実際には明後日までの天気も読み取ることが必要。
 
 ## 日付変換
 ``` python
