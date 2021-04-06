@@ -6,61 +6,81 @@ import requests
 import dateutil.parser
 from bs4 import BeautifulSoup
 import json
-
+import objectpath
 
 def display(cal):
     return cal.to_ical().decode().replace('\r\n', '\n').strip()
 
 
-def get_forecast(office, class10, amedas):
+def get_forecast(office):
     # const
     telops = {}
     with open('telops.json') as json_file:
         telops = json.load(json_file)
 
-    # urls
+    # download
     cache_now = datetime.now().strftime('%Y%m%d%H%M')
     url_forecast = f'https://www.jma.go.jp/bosai/forecast/data/forecast/{office}.json?__time__={cache_now}'
-    print(url_forecast)
+    forecast = requests.get(url_forecast).json()
 
     # main
-    forecast = requests.get(url_forecast).json()
-    forecast_week = {}
-    forecast_3d = {}
-    for forecast_3d_or_week in forecast:
-        if "tempAverage" in forecast_3d_or_week:
-            forecast_week = forecast_3d_or_week
-        else:
-            forecast_3d = forecast_3d_or_week
+    def get_list(query):
+        return list(objectpath.Tree(forecast).execute(query))
 
-    forecast_areas = []
-    for forecast_weather_or_temp in forecast_week["timeSeries"]:
-        for forecast_area in forecast_weather_or_temp["areas"]:
-            forecast_areas.append(forecast_area)
+    # 一週間の最高最低気温
+    # このコードはjson内の天気・気温等データの時刻に対する並び順が変わらないことを仮定しているため日付を取得してソートするなどの厳密な処理は行っていない
+    # 週間天気のデータから県を代表するamedasのidを取得する
+    amedas = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..code')[0]
+    place = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..name')[0]
 
-    timeDefines = [dateutil.parser.parse(
-        d).date() for d in forecast_week["timeSeries"][0]["timeDefines"]]
+    date = [dateutil.parser.parse(d).date() for d in get_list(
+        f'$..*[timeDefines in @ and len(@..tempsMin) > 0].timeDefines')[0]]
 
-    place = ""
-    weathers = []
-    tempsMin = []
-    tempsMax = []
-    for area in forecast_areas:
-        if area["area"]["code"] == class10:
-            weathers = [telops[w][3] for w in area["weatherCodes"]]
-        if area["area"]["code"] == amedas:
-            place = area["area"]["name"]
-            tempsMin = area["tempsMin"]
-            tempsMax = area["tempsMax"]
+    maxt = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..tempsMax')
+    mint = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..tempsMin')
 
-    return place, list(zip(timeDefines, weathers, tempsMax, tempsMin))
+    # 一週間の天気
+    weathers = get_list(
+        f'$..*[timeDefines in @ and "{office}" in @..code and len(@..weatherCodes) > 0]..*[@.area.code is "{office}"].weatherCodes')[0]
+
+    # 今日明日の最高最低気温
+    # 週間予報の配列を直接上書きする。今日明日の気温の配列は今日の分だけ最高気温が最低気温より前に格納されていることに注意
+
+    ## 時間帯判定　5~11時なら週間天気予報と今日・明日の天気が、それ以外の時間は週間天気予報と明日の天気がオーバーラップしている
+    ## これは週間天気予報が5時に発表されず、今日明日の天気に対して情報が古くなるために起こる
+    day1 = get_list(f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0].timeDefines')[0][1]
+    day2 = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0].timeDefines')[0][0]
+    if day1 == day2: # データの古い5-11時
+        maxt[1] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][3]
+        mint[1] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][2]
+        maxt[0] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][0]
+
+    else:
+        maxt[0] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][3]
+        mint[0] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][2]
+        # 配列を今日側に拡張
+        date = [dateutil.parser.parse(day1).date()] + date
+        weathers = [""] + weathers # 今日明日の天気の取得はamedasが存在するclass10を知っている必要があるので困難
+        maxt = [get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][0]]\
+            + maxt 
+        mint = [""] + mint
+
+    weathers = ["" if w == "" else telops[w][3] for w in weathers]
+
+    return place, list(zip(date, weathers, maxt, mint))
 
 
 def write_ical():
     office = "250000"
-    class10 = "250010"
-    amedas = "60216"
-    place, weatherlist = get_forecast(office, class10, amedas)
+    # class10 = "250010"
+    # amedas = "60216"
+    place, weatherlist = get_forecast(office)
 
     # [iCalendar package — icalendar 4.0.5.dev0 documentation](https://icalendar.readthedocs.io/en/latest/usage.html)
     cal = Calendar()
