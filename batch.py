@@ -3,15 +3,84 @@ from icalendar import Calendar, Event
 from datetime import datetime, date, timedelta
 
 import requests
+import dateutil.parser
 from bs4 import BeautifulSoup
+import json
+import objectpath
+
+def display(cal):
+    return cal.to_ical().decode().replace('\r\n', '\n').strip()
 
 
-def main():
-    # shiga otsu = 334, 0
-    # shiga hikone = 334, 1
-    pref_id = 334
-    point = 0
-    (pref, place, days, wt) = weather(pref_id, point)
+def get_forecast(office):
+    # const
+    telops = {}
+    with open('telops.json') as json_file:
+        telops = json.load(json_file)
+
+    # download
+    cache_now = datetime.now().strftime('%Y%m%d%H%M')
+    url_forecast = f'https://www.jma.go.jp/bosai/forecast/data/forecast/{office}.json?__time__={cache_now}'
+    forecast = requests.get(url_forecast).json()
+
+    # main
+    def get_list(query):
+        return list(objectpath.Tree(forecast).execute(query))
+
+    # 一週間の最高最低気温
+    # このコードはjson内の天気・気温等データの時刻に対する並び順が変わらないことを仮定しているため日付を取得してソートするなどの厳密な処理は行っていない
+    # 週間天気のデータから県を代表するamedasのidを取得する
+    amedas = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..code')[0]
+    place = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..name')[0]
+
+    date = [dateutil.parser.parse(d).date() for d in get_list(
+        f'$..*[timeDefines in @ and len(@..tempsMin) > 0].timeDefines')[0]]
+
+    maxt = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..tempsMax')
+    mint = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0]..tempsMin')
+
+    # 一週間の天気
+    weathers = get_list(
+        f'$..*[timeDefines in @ and "{office}" in @..code and len(@..weatherCodes) > 0]..*[@.area.code is "{office}"].weatherCodes')[0]
+
+    # 今日明日の最高最低気温
+    # 週間予報の配列を直接上書きする。今日明日の気温の配列は今日の分だけ最高気温が最低気温より前に格納されていることに注意
+
+    ## 時間帯判定　5~11時なら週間天気予報と今日・明日の天気が、それ以外の時間は週間天気予報と明日の天気がオーバーラップしている
+    ## これは週間天気予報が5時に発表されず、今日明日の天気に対して情報が古くなるために起こる
+    day1 = get_list(f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0].timeDefines')[0][1]
+    day2 = get_list(f'$..*[timeDefines in @ and len(@..tempsMin) > 0].timeDefines')[0][0]
+    if day1 == day2: # データの古い5-11時
+        maxt[1] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][3]
+        mint[1] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][2]
+        maxt[0] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][0]
+
+    else:
+        maxt[0] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][3]
+        mint[0] = get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][2]
+        # 配列を今日側に拡張
+        date = [dateutil.parser.parse(day1).date()] + date
+        weathers = [""] + weathers # 今日明日の天気の取得はamedasが存在するclass10を知っている必要があるので困難
+        maxt = [get_list(
+            f'$..*[timeDefines in @ and "{amedas}" in @..code and len(@..temps) > 0]..*[@.area.code is "{amedas}"].temps')[0][0]]\
+            + maxt 
+        mint = [""] + mint
+
+    weathers = ["" if w == "" else telops[w][3] for w in weathers]
+
+    return place, list(zip(date, weathers, maxt, mint))
+
+
+def write_ical():
+    office = "250000"
+    # class10 = "250010"
+    # amedas = "60216"
+    place, weatherlist = get_forecast(office)
 
     # [iCalendar package — icalendar 4.0.5.dev0 documentation](https://icalendar.readthedocs.io/en/latest/usage.html)
     cal = Calendar()
@@ -20,72 +89,18 @@ def main():
     cal.add('X-WR-CALNAME', f'週間天気予報({place})')
     cal.add('X-WR-CALDESC', '気象庁の週間天気予報')
     cal.add('X-WR-TIMEZONE', 'Asia/Tokyo')
-    for day, w in zip(days, wt):
+    for day, weather, max, min in weatherlist:
         event = Event()
-        event.add('summary', w)
+        event.add('summary', f'{weather} {max}℃/{min}℃')
         event.add('dtstart', day)
         event.add('dtend', day + timedelta(days=1))
         event.add('DESCRIPTION',
-                  f'詳細：https://www.jma.go.jp/jp/week/{pref_id}.html')
+                  f'詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code={office}')
         cal.add_component(event)
 
     with open('weather.ics', mode='w') as f:
         f.write(display(cal) + '\n')
 
 
-def display(cal):
-    return cal.to_ical().decode().replace('\r\n', '\n').strip()
-
-
-def weather(pref_id, point):
-    load_url = f"https://www.jma.go.jp/jp/week/{pref_id}.html"
-    html = requests.get(load_url)
-    soup = BeautifulSoup(html.content, 'html5lib')
-    data = soup.select_one('#infotablefont').select('tr')
-    rows = data[1:][point*5:point*5 + 5]
-
-    # get pref
-    pref = soup.find('h1').text.split('：')[-1].strip()
-    print(pref)
-
-    # get place
-    place = rows[3].find('th').text
-    print(place)
-
-    # get date
-    first_day = int(data[0].select('th')[1].find(
-        "br").previousSibling)  # e.g. 31
-
-    if(not(1 <= first_day <= 31)):
-        raise Exception
-
-    full_date = date.today()
-    attempt = 0
-    max_attempt = 1
-
-    while full_date.day != first_day:
-        attempt += 1
-        if attempt > max_attempt:
-            raise Exception
-        full_date += timedelta(days=1)
-
-    days = [full_date + timedelta(days=i) for i in range(7)]
-    print(days)
-
-    # get weather
-    weathers = [td.find("br").previousSibling for td in rows[0].select('td')]
-
-    max_temp = [
-        td.find("br").previousSibling if td.find("br") else '-' for td in rows[3].select('td')[1:]]
-    min_temp = [
-        td.find("br").previousSibling if td.find("br") else '-' for td in rows[4].select('td')[1:]]
-
-    weather_temp = [f'{a} {b}℃/{c}℃'for a, b,
-                    c in zip(weathers, max_temp, min_temp)]
-    print(weather_temp)
-
-    return (pref, place, days, weather_temp)
-
-
 if __name__ == '__main__':
-    main()
+    write_ical()
