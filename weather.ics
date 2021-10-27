@@ -6,48 +6,41 @@ X-WR-CALNAME:週間天気予報(彦根)
 X-WR-TIMEZONE:Asia/Tokyo
 BEGIN:VEVENT
 SUMMARY: 21℃/℃
-DTSTART;VALUE=DATE:20211026
-DTEND;VALUE=DATE:20211027
-DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
- es&area_code=250000
-END:VEVENT
-BEGIN:VEVENT
-SUMMARY:晴時々曇 21℃/12℃
 DTSTART;VALUE=DATE:20211027
 DTEND;VALUE=DATE:20211028
 DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
  es&area_code=250000
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:曇時々晴 21℃/11℃
+SUMMARY:晴時々曇 21℃/11℃
 DTSTART;VALUE=DATE:20211028
 DTEND;VALUE=DATE:20211029
 DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
  es&area_code=250000
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:晴時々曇 20℃/11℃
+SUMMARY:晴時々曇 19℃/11℃
 DTSTART;VALUE=DATE:20211029
 DTEND;VALUE=DATE:20211030
 DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
  es&area_code=250000
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:晴時々曇 21℃/9℃
+SUMMARY:晴後曇 21℃/9℃
 DTSTART;VALUE=DATE:20211030
 DTEND;VALUE=DATE:20211031
 DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
  es&area_code=250000
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:曇 20℃/11℃
+SUMMARY:曇 20℃/12℃
 DTSTART;VALUE=DATE:20211031
 DTEND;VALUE=DATE:20211101
 DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
  es&area_code=250000
 END:VEVENT
 BEGIN:VEVENT
-SUMMARY:曇時々晴 20℃/13℃
+SUMMARY:曇時々晴 21℃/12℃
 DTSTART;VALUE=DATE:20211101
 DTEND;VALUE=DATE:20211102
 DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
@@ -57,6 +50,13 @@ BEGIN:VEVENT
 SUMMARY:曇時々晴 20℃/12℃
 DTSTART;VALUE=DATE:20211102
 DTEND;VALUE=DATE:20211103
+DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
+ es&area_code=250000
+END:VEVENT
+BEGIN:VEVENT
+SUMMARY:曇時々晴 20℃/11℃
+DTSTART;VALUE=DATE:20211103
+DTEND;VALUE=DATE:20211104
 DESCRIPTION:詳細：https://www.jma.go.jp/bosai/forecast/#area_type=offic
  es&area_code=250000
 END:VEVENT
